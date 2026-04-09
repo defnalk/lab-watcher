@@ -11,8 +11,12 @@ export function apiRouter(db: StateDb): Router {
 
   r.get("/files/:id", (req, res) => {
     const id = Number(req.params.id);
-    if (!Number.isFinite(id)) {
-      res.status(400).json({ error: "id must be a number" });
+    // The SQLite primary key is a positive integer; reject fractional,
+    // negative, zero and non-numeric inputs up front instead of handing
+    // them to better-sqlite3 (which would coerce 1.5 -> 1 silently or
+    // throw for NaN).
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "id must be a positive integer" });
       return;
     }
     const row = db.byId(id);
