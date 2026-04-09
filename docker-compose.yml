@@ -1,0 +1,49 @@
+# Brings up the full lab-watcher stack:
+#   1. engine-builder produces libvalengine.so into a shared volume
+#   2. cli runs the Java watcher daemon, loading the native lib
+#   3. dashboard reads the same SQLite db and serves the web UI on :3000
+#
+# Drop CSV files into ./sample-data and watch them flow through.
+
+services:
+  engine-builder:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+      target: builder
+    command: ["sh", "-c", "cp /src/build/libvalengine.so /native/ && tail -f /dev/null"]
+    volumes:
+      - native-libs:/native
+
+  cli:
+    build:
+      context: ./cli
+    depends_on:
+      - engine-builder
+    environment:
+      LABWATCHER_NOTION_TOKEN: ${LABWATCHER_NOTION_TOKEN:-}
+      LABWATCHER_NOTION_DB_ID: ${LABWATCHER_NOTION_DB_ID:-}
+      LABWATCHER_SLACK_WEBHOOK: ${LABWATCHER_SLACK_WEBHOOK:-}
+    volumes:
+      - native-libs:/native:ro
+      - ./sample-data:/data:ro
+      - ./schemas:/schemas:ro
+      - state-db:/state
+      - ./docker/lab-watcher.toml:/app/lab-watcher.toml:ro
+
+  dashboard:
+    build:
+      context: ./dashboard
+    depends_on:
+      - cli
+    ports:
+      - "3000:3000"
+    environment:
+      DB_PATH: /state/lab-watcher.db
+      PORT: "3000"
+    volumes:
+      - state-db:/state:ro
+
+volumes:
+  native-libs:
+  state-db:

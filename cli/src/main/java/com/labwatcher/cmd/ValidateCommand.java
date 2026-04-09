@@ -2,6 +2,7 @@ package com.labwatcher.cmd;
 
 import com.labwatcher.engine.EngineAdapter;
 import com.labwatcher.format.ConsoleFormatter;
+import com.labwatcher.format.JsonFormatter;
 import com.labwatcher.model.FileSummary;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -25,6 +26,10 @@ public final class ValidateCommand implements Callable<Integer> {
     @Option(names = "--no-color", description = "Disable ANSI colours in output.")
     private boolean noColor;
 
+    @Option(names = "--format", description = "Output format: text (default) or json.",
+            defaultValue = "text")
+    private String format;
+
     @Override
     public Integer call() {
         if (!Files.isRegularFile(file)) {
@@ -38,8 +43,11 @@ public final class ValidateCommand implements Callable<Integer> {
         try {
             EngineAdapter adapter = new EngineAdapter();
             FileSummary summary = adapter.parseAndValidate(file, schema);
-            ConsoleFormatter fmt = new ConsoleFormatter(!noColor);
-            System.out.print(fmt.format(summary));
+            if ("json".equalsIgnoreCase(format)) {
+                System.out.print(new JsonFormatter().format(summary));
+            } else {
+                System.out.print(new ConsoleFormatter(!noColor).format(summary));
+            }
             return summary.passed() ? 0 : 1;
         } catch (UnsatisfiedLinkError e) {
             System.err.println("error: native engine not loaded. Build it with:");

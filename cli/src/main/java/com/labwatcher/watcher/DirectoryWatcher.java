@@ -70,8 +70,8 @@ public final class DirectoryWatcher implements AutoCloseable {
             // Flush files that have been quiet for DEBOUNCE_MS.
             pending.entrySet().removeIf(e -> {
                 if (now - e.getValue() < DEBOUNCE_MS) return false;
-                LOG.info("processing {}", e.getKey().getFileName());
-                processor.process(e.getKey());
+                LOG.info("submitting {}", e.getKey().getFileName());
+                processor.submit(e.getKey());
                 return true;
             });
         }

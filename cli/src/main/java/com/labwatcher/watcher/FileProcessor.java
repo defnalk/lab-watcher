@@ -13,29 +13,68 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Orchestrates one CSV file from detection to dispatch:
  * hash → dedup → engine validate → persist → fan out to dispatchers.
- * Dispatcher failures are logged but never abort processing.
+ *
+ * <p>Work is dispatched onto a virtual-thread executor (Java 21) with a
+ * bounded {@link Semaphore} so a burst of file-system events can't spawn
+ * unbounded engine calls or exhaust the SQLite write lock. Dispatcher
+ * failures are logged but never abort the loop.
  */
-public final class FileProcessor {
+public final class FileProcessor implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(FileProcessor.class);
 
     private final EngineAdapter engine;
     private final StateRepository state;
     private final List<Dispatcher> dispatchers;
     private final Path schemaPath;
+    private final ExecutorService executor;
+    private final Semaphore permits;
 
     public FileProcessor(EngineAdapter engine, StateRepository state,
                          List<Dispatcher> dispatchers, Path schemaPath) {
+        this(engine, state, dispatchers, schemaPath, 8);
+    }
+
+    public FileProcessor(EngineAdapter engine, StateRepository state,
+                         List<Dispatcher> dispatchers, Path schemaPath,
+                         int maxConcurrent) {
         this.engine = engine;
         this.state = state;
         this.dispatchers = List.copyOf(dispatchers);
         this.schemaPath = schemaPath;
+        this.permits = new Semaphore(maxConcurrent);
+        this.executor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("lw-proc-", 0).factory());
     }
 
-    /** Process a single file. Idempotent: dedups by content hash. */
+    /**
+     * Submit a file for asynchronous processing. Blocks the caller only if
+     * the bounded permit pool is exhausted (back-pressure on the watcher).
+     */
+    public void submit(Path file) {
+        try {
+            permits.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                process(file);
+            } finally {
+                permits.release();
+            }
+        });
+    }
+
+    /** Synchronous processing — used by {@code processExisting} and tests. */
     public void process(Path file) {
         try {
             if (!Files.isRegularFile(file)) return;
@@ -74,6 +113,21 @@ public final class FileProcessor {
             }
         } catch (IOException e) {
             LOG.error("I/O error processing {}: {}", file, e.getMessage());
+        }
+    }
+
+    /** Drain in-flight work and shut down the executor. */
+    @Override
+    public void close() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                LOG.warn("executor did not drain in 30s; forcing shutdown");
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
         }
     }
 }

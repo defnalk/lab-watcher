@@ -74,14 +74,15 @@ public final class WatchCommand implements Callable<Integer> {
             if (!noSlack && cfg.slack().enabled()) {
                 dispatchers.add(new SlackDispatcher(cfg.slack().webhookUrl()));
             }
-            FileProcessor processor = new FileProcessor(
-                new EngineAdapter(), state, dispatchers, schema);
+            try (FileProcessor processor = new FileProcessor(
+                     new EngineAdapter(), state, dispatchers, schema);
+                 DirectoryWatcher watcher = new DirectoryWatcher(
+                     watchDir, cfg.watch().filePattern(), processor)) {
 
-            try (DirectoryWatcher watcher = new DirectoryWatcher(
-                    watchDir, cfg.watch().filePattern(), processor)) {
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     LOG.info("shutting down...");
                     watcher.close();
+                    processor.close();
                 }, "lab-watcher-shutdown"));
 
                 LOG.info("watching {} (pattern={})", watchDir, cfg.watch().filePattern());

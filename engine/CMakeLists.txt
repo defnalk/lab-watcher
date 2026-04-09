@@ -34,6 +34,10 @@ else()
   message(WARNING "JNI not found; skipping valengine_jni shared library.")
 endif()
 
+# Benchmark binary (no external framework, just std::chrono)
+add_executable(valengine_bench bench/bench_parser.cpp)
+target_link_libraries(valengine_bench PRIVATE valengine)
+
 # Tests via FetchContent (requires network on first configure)
 option(VALENGINE_BUILD_TESTS "Build googletest-based tests" ON)
 if(VALENGINE_BUILD_TESTS)
@@ -50,6 +54,7 @@ if(VALENGINE_BUILD_TESTS)
     tests/test_stats.cpp
     tests/test_validator.cpp
     tests/test_schema.cpp
+    tests/test_fuzz.cpp
   )
   target_link_libraries(valengine_tests PRIVATE valengine GTest::gtest_main)
   include(GoogleTest)

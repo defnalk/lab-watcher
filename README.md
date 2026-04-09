@@ -1,5 +1,7 @@
 # lab-watcher
 
+[![CI](https://github.com/defnalk/lab-watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/defnalk/lab-watcher/actions/workflows/ci.yml)
+
 A multi-language CLI for validating lab instrument CSV files against a schema.
 
 - **C++17 engine** (`engine/`) — CSV parsing, schema validation, and column statistics
@@ -90,3 +92,37 @@ lab-watcher/
 | Config loader (TOML + env vars)      | ✅ implemented   |
 | Notion / Slack dispatchers           | ✅ implemented   |
 | Node.js dashboard                    | ✅ implemented   |
+| GitHub Actions CI (3 parallel jobs)  | ✅ implemented   |
+| Docker Compose full stack            | ✅ implemented   |
+| Virtual-thread concurrent processing | ✅ implemented   |
+| C++ benchmark binary                 | ✅ implemented   |
+| Parser fuzz test                     | ✅ implemented   |
+| `validate --format json`             | ✅ implemented   |
+
+## Advanced features
+
+A handful of things worth pointing out beyond the basic feature list:
+
+- **Java 21 virtual threads.** `FileProcessor` dispatches each file onto a
+  virtual-thread executor with a bounded `Semaphore`. A burst of inotify
+  events can't spawn unbounded engine calls or contend on the SQLite write
+  lock — the watcher loop back-pressures naturally when permits run out.
+- **JSON output mode.** `lab-watcher validate file.csv --schema mea.toml
+  --format json` emits a machine-readable summary suitable for piping into
+  `jq`, CI gates, or other tooling. Exit code still reflects pass/fail.
+- **C++ micro-benchmark.** `engine/build/valengine_bench [rows] [iters]`
+  generates a synthetic CSV in memory and reports rows/sec and MB/sec
+  throughput. No external benchmark framework — `std::chrono` is enough.
+  Reference numbers on an M-series Mac, 10k rows × 6 cols × 50 iters,
+  release build: **~986k rows/sec, ~56 MB/sec, 10 ms/iter**.
+- **Property-style fuzz test.** `tests/test_fuzz.cpp` feeds 2000 random
+  byte strings (with biased BOM/quote/delimiter injection) into the parser
+  and asserts no exception escapes — a cheap guard against crashes on
+  hostile or corrupt input.
+- **Three-job CI.** `.github/workflows/ci.yml` builds and tests the C++
+  engine, the Java CLI (with downloaded native artifact), and the Node
+  dashboard in parallel, with Gradle and npm caching and artifact upload.
+- **Full-stack Docker Compose.** `docker compose up` brings the engine
+  builder, Java watcher, and dashboard up against shared volumes for the
+  native lib and SQLite state — drop CSVs into `./sample-data` and they
+  flow through the entire pipeline.
