@@ -12,6 +12,12 @@ cli/build/
 cli/bin/
 *.class
 
+# Node
+dashboard/node_modules/
+dashboard/dist/
+dashboard/coverage/
+npm-debug.log*
+
 # Editors / OS
 .idea/
 .vscode/

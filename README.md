@@ -88,5 +88,5 @@ lab-watcher/
 | Watcher daemon + SQLite state        | ✅ implemented   |
 | `watch` / `status` commands          | ✅ implemented   |
 | Config loader (TOML + env vars)      | ✅ implemented   |
-| Notion / Slack dispatchers           | 🚧 not yet       |
-| Node.js dashboard                    | 🚧 not yet       |
+| Notion / Slack dispatchers           | ✅ implemented   |
+| Node.js dashboard                    | ✅ implemented   |

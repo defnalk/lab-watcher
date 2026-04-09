@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>lab-watcher</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header>
+    <h1>lab-watcher</h1>
+    <span id="conn" class="conn offline" title="WebSocket status">●</span>
+  </header>
+
+  <section class="cards">
+    <div class="card">
+      <div class="label">Total Files</div>
+      <div class="value" id="card-total">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Pass Rate</div>
+      <div class="value" id="card-rate">–</div>
+    </div>
+    <div class="card">
+      <div class="label">Last Processed</div>
+      <div class="value" id="card-last">–</div>
+    </div>
+  </section>
+
+  <main>
+    <table id="files">
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Status</th>
+          <th>Rows</th>
+          <th>Cols</th>
+          <th>Errors</th>
+          <th>Warnings</th>
+          <th>Processed</th>
+        </tr>
+      </thead>
+      <tbody id="files-body">
+        <tr><td colspan="7" class="empty">Waiting for lab-watcher…</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
