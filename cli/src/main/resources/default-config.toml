@@ -1,0 +1,24 @@
+[watch]
+directory = "./data"
+interval_seconds = 5
+file_pattern = "*.csv"
+recursive = false
+
+[schema]
+path = "./schemas/mea-pilot-plant.toml"
+
+[state]
+db_path = "./lab-watcher.db"
+
+[notion]
+enabled = false
+token = "${LABWATCHER_NOTION_TOKEN}"
+database_id = "${LABWATCHER_NOTION_DB_ID}"
+
+[slack]
+enabled = false
+webhook_url = "${LABWATCHER_SLACK_WEBHOOK}"
+
+[logging]
+level = "INFO"
+file = ""
