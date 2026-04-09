@@ -112,8 +112,13 @@ public final class SqliteStateRepository implements StateRepository {
 
     @Override
     public List<ProcessedFile> recent(int limit) {
+        // processed_at is stored as second-precision ISO strings, so two
+        // files ingested in the same second would sort non-deterministically
+        // and could even be swapped between calls. Break ties on the
+        // monotonic primary key so recent() matches the dashboard's
+        // id-ordered `recent` query.
         final String sql = "SELECT * FROM processed_files "
-                         + "ORDER BY processed_at DESC LIMIT ?";
+                         + "ORDER BY processed_at DESC, id DESC LIMIT ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, limit);
             try (ResultSet rs = ps.executeQuery()) {

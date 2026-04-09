@@ -54,6 +54,12 @@ public final class SlackDispatcher implements Dispatcher {
             }
             LOG.error("slack: HTTP {} body={}", resp.statusCode(), resp.body());
             return false;
+        } catch (InterruptedException e) {
+            // Preserve interrupt status so the surrounding shutdown flow
+            // (FileProcessor's executor drain) can observe it and stop.
+            Thread.currentThread().interrupt();
+            LOG.warn("slack: dispatch interrupted");
+            return false;
         } catch (Exception e) {
             LOG.error("slack: dispatch failed: {}", e.getMessage());
             return false;
