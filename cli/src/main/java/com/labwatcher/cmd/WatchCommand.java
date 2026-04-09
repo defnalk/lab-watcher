@@ -2,11 +2,18 @@ package com.labwatcher.cmd;
 
 import com.labwatcher.config.AppConfig;
 import com.labwatcher.config.ConfigLoader;
+import com.labwatcher.dispatch.ConsoleDispatcher;
+import com.labwatcher.dispatch.Dispatcher;
+import com.labwatcher.dispatch.NotionDispatcher;
+import com.labwatcher.dispatch.SlackDispatcher;
 import com.labwatcher.engine.EngineAdapter;
 import com.labwatcher.format.ConsoleFormatter;
 import com.labwatcher.state.SqliteStateRepository;
 import com.labwatcher.watcher.DirectoryWatcher;
 import com.labwatcher.watcher.FileProcessor;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -36,6 +43,12 @@ public final class WatchCommand implements Callable<Integer> {
     @Option(names = "--no-color", description = "Disable ANSI colours.")
     private boolean noColor;
 
+    @Option(names = "--no-notion", description = "Disable Notion dispatch.")
+    private boolean noNotion;
+
+    @Option(names = "--no-slack", description = "Disable Slack dispatch.")
+    private boolean noSlack;
+
     @Override
     public Integer call() throws Exception {
         AppConfig cfg = new ConfigLoader().load(configPath);
@@ -52,9 +65,17 @@ public final class WatchCommand implements Callable<Integer> {
         }
 
         try (SqliteStateRepository state = SqliteStateRepository.forFile(cfg.state().dbPath())) {
+            List<Dispatcher> dispatchers = new ArrayList<>();
+            dispatchers.add(new ConsoleDispatcher(new ConsoleFormatter(!noColor)));
+            if (!noNotion && cfg.notion().enabled()) {
+                dispatchers.add(new NotionDispatcher(
+                    cfg.notion().token(), cfg.notion().databaseId()));
+            }
+            if (!noSlack && cfg.slack().enabled()) {
+                dispatchers.add(new SlackDispatcher(cfg.slack().webhookUrl()));
+            }
             FileProcessor processor = new FileProcessor(
-                new EngineAdapter(), state,
-                new ConsoleFormatter(!noColor), schema);
+                new EngineAdapter(), state, dispatchers, schema);
 
             try (DirectoryWatcher watcher = new DirectoryWatcher(
                     watchDir, cfg.watch().filePattern(), processor)) {
