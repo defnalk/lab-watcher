@@ -23,8 +23,8 @@
 
   function rowHtml(row) {
     return (
-      `<tr data-id="${row.id}">` +
-      `<td>${row.file_name}</td>` +
+      `<tr class="row" data-id="${row.id}">` +
+      `<td>${escapeHtml(row.file_name)}</td>` +
       `<td>${statusBadge(row.status)}</td>` +
       `<td>${row.row_count}</td>` +
       `<td>${row.column_count}</td>` +
@@ -33,6 +33,12 @@
       `<td>${new Date(row.processed_at).toLocaleTimeString()}</td>` +
       `</tr>`
     );
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
   }
 
   function applyRow(row, flash) {
@@ -53,11 +59,38 @@
     tbody.innerHTML = "";
     seen.clear();
     stats = { total: 0, pass: 0, fail: 0, error: 0, last: null };
-    // Snapshot is newest-first; reverse so we apply oldest-first and the
-    // newest ends up at the top.
     [...rows].reverse().forEach((r) => applyRow(r, false));
     refreshCards();
   }
+
+  async function toggleDetail(tr) {
+    const next = tr.nextElementSibling;
+    if (next && next.classList.contains("detail")) {
+      next.remove();
+      return;
+    }
+    const id = tr.dataset.id;
+    let detail;
+    try {
+      const resp = await fetch(`/api/files/${id}`);
+      if (!resp.ok) throw new Error(String(resp.status));
+      detail = await resp.json();
+    } catch (e) {
+      detail = { error: "failed to load: " + e.message };
+    }
+    const dl = Object.entries(detail)
+      .map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v ?? "—")}</dd>`)
+      .join("");
+    const detailTr = document.createElement("tr");
+    detailTr.className = "detail";
+    detailTr.innerHTML = `<td colspan="7"><dl>${dl}</dl></td>`;
+    tr.after(detailTr);
+  }
+
+  tbody.addEventListener("click", (ev) => {
+    const tr = ev.target.closest("tr.row");
+    if (tr) toggleDetail(tr);
+  });
 
   function connect() {
     const proto = location.protocol === "https:" ? "wss" : "ws";

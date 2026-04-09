@@ -40,6 +40,14 @@ public final class SqliteStateRepository implements StateRepository {
         try {
             this.conn = DriverManager.getConnection(jdbcUrl);
             try (Statement st = conn.createStatement()) {
+                // WAL mode lets the dashboard read concurrently with the
+                // watcher's writes — vital because the dashboard polls
+                // every 2s and the writer would otherwise block it.
+                // Skip for in-memory databases (WAL is meaningless there).
+                if (!jdbcUrl.contains(":memory:")) {
+                    st.execute("PRAGMA journal_mode=WAL");
+                    st.execute("PRAGMA synchronous=NORMAL");
+                }
                 for (String sql : SCHEMA.split(";")) {
                     String trimmed = sql.trim();
                     if (!trimmed.isEmpty()) st.execute(trimmed);

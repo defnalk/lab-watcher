@@ -82,4 +82,15 @@ describe("dashboard API", () => {
     const res = await request(buildApp(db)).get("/api/files/9999");
     expect(res.status).toBe(404);
   });
+
+  test("GET /metrics returns Prometheus exposition", async () => {
+    const res = await request(buildApp(db)).get("/metrics");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/plain");
+    expect(res.text).toContain("labwatcher_files_total 3");
+    expect(res.text).toContain('labwatcher_files_by_status{status="pass"} 2');
+    expect(res.text).toContain('labwatcher_files_by_status{status="fail"} 1');
+    expect(res.text).toContain("labwatcher_pass_rate");
+    expect(res.text).toContain("labwatcher_db_connected 1");
+  });
 });

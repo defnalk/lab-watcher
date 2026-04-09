@@ -6,6 +6,7 @@ import { WebSocketServer } from "ws";
 import { StateDb } from "./db";
 import { apiRouter } from "./routes/api";
 import { healthRouter } from "./routes/health";
+import { metricsRouter } from "./routes/metrics";
 import { LiveUpdater } from "./ws/liveUpdates";
 
 /** Build the Express app. Exported so tests can mount it without spawning a port. */
@@ -15,6 +16,7 @@ export function buildApp(db: StateDb): express.Express {
   app.use(express.json());
   app.use("/api", apiRouter(db));
   app.use(healthRouter(db));
+  app.use(metricsRouter(db));
   app.use(express.static(path.join(__dirname, "..", "public")));
   return app;
 }

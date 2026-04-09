@@ -84,4 +84,33 @@ public final class EngineAdapter {
     public FileSummary parseAndValidate(String csv, String schema) {
         return parseAndValidate(Paths.get(csv), Paths.get(schema));
     }
+
+    /** Parse-only result: headers + per-column statistics, no validation. */
+    public record ParseSummary(List<String> headers, List<ColumnStat> columnStats) {}
+
+    /** Run the engine's parser on a CSV without applying any schema. */
+    public ParseSummary parse(Path csv) {
+        final String json = ValEngineJNI.parseCsv(csv.toString());
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            List<String> headers = new ArrayList<>();
+            for (JsonNode h : root.path("headers")) headers.add(h.asText());
+            List<ColumnStat> stats = new ArrayList<>();
+            for (JsonNode s : root.path("column_stats")) {
+                stats.add(new ColumnStat(
+                    s.path("name").asText(),
+                    s.path("type").asText(),
+                    s.path("non_null_count").asLong(),
+                    s.path("null_count").asLong(),
+                    optDouble(s, "min"),
+                    optDouble(s, "max"),
+                    optDouble(s, "mean"),
+                    optDouble(s, "stddev")
+                ));
+            }
+            return new ParseSummary(headers, stats);
+        } catch (Exception ex) {
+            throw new IllegalStateException("failed to parse engine JSON: " + ex.getMessage(), ex);
+        }
+    }
 }

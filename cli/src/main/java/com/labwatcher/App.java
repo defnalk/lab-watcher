@@ -1,5 +1,6 @@
 package com.labwatcher;
 
+import com.labwatcher.cmd.InferSchemaCommand;
 import com.labwatcher.cmd.InitCommand;
 import com.labwatcher.cmd.StatusCommand;
 import com.labwatcher.cmd.ValidateCommand;
@@ -17,6 +18,7 @@ import picocli.CommandLine.Command;
         ValidateCommand.class,
         WatchCommand.class,
         StatusCommand.class,
+        InferSchemaCommand.class,
         InitCommand.class
     }
 )

@@ -126,3 +126,20 @@ A handful of things worth pointing out beyond the basic feature list:
   builder, Java watcher, and dashboard up against shared volumes for the
   native lib and SQLite state — drop CSVs into `./sample-data` and they
   flow through the entire pipeline.
+- **Schema inference.** `lab-watcher infer-schema clean_run.csv -o
+  schemas/new.toml` runs the engine over a known-good sample and emits a
+  starter schema with min/max bounds derived from the observed column
+  statistics, padded by a configurable margin (`--margin 0.10` by default).
+  Hand-edit, then point `watch` at the live data directory.
+- **SQLite WAL mode.** The state database is opened in WAL mode with
+  `synchronous=NORMAL` so the dashboard can poll concurrently with the
+  watcher's writes without blocking — important because the dashboard polls
+  every 2s for new rows.
+- **Prometheus metrics.** The dashboard exposes `/metrics` in Prometheus
+  text exposition format (`labwatcher_files_total`,
+  `labwatcher_files_by_status{status="…"}`, `labwatcher_pass_rate`,
+  `labwatcher_db_connected`) so the watcher can be scraped by an existing
+  ops stack with zero extra config.
+- **Interactive dashboard rows.** Clicking any row in the dashboard fetches
+  `/api/files/:id` and inlines the full record beneath the row — useful
+  when triaging failures without leaving the page.
