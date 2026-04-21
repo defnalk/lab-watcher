@@ -119,6 +119,18 @@ ValidationReport validate(const ParseResult& parsed, const SchemaSpec& schema) {
                         ", got: " + cell));
                     continue;
                 }
+                if (col.type == ColumnType::INTEGER) {
+                    // strtod happily accepts "1.5" / "1e-3" / NaN / Inf for
+                    // an INTEGER column; reject any value that isn't a
+                    // finite integral number.
+                    double int_part;
+                    if (!std::isfinite(v) || std::modf(v, &int_part) != 0.0) {
+                        report.errors.push_back(make_err(line, col.name,
+                            ErrorCode::TYPE_MISMATCH, Severity::ERROR_,
+                            "expected integer, got: " + cell));
+                        continue;
+                    }
+                }
                 if (col.min_value && v < *col.min_value) {
                     std::ostringstream m;
                     m << "value " << v << " below min " << *col.min_value;

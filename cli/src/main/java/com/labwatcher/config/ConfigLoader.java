@@ -12,7 +12,11 @@ import java.util.regex.Pattern;
 /** Loads {@link AppConfig} from a TOML file with {@code ${VAR}} interpolation. */
 public final class ConfigLoader {
 
-    private static final Pattern VAR = Pattern.compile("\\$\\{([A-Z0-9_]+)}");
+    // Match POSIX-style env var names: letters (either case), digits and
+    // underscore, not starting with a digit. The previous uppercase-only
+    // pattern silently skipped lowercase vars like ${home} or ${my_token}.
+    private static final Pattern VAR =
+        Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_]*)}");
 
     private final Function<String, String> envLookup;
 
